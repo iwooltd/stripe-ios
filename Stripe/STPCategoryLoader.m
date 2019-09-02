@@ -23,7 +23,7 @@
 #import "PKPaymentAuthorizationViewController+Stripe_Blocks.h"
 #import "STPAPIClient+ApplePay.h"
 #import "STPAspects.h"
-#import "STPCustomer+SourceTuple.h"
+#import "STPCardValidator+Private.h"
 #import "StripeError.h"
 #import "UIBarButtonItem+Stripe.h"
 #import "UIImage+Stripe.h"
@@ -32,6 +32,7 @@
 #import "UITableViewCell+Stripe_Borders.h"
 #import "UIToolbar+Stripe_InputAccessory.h"
 #import "UIView+Stripe_FirstResponder.h"
+#import "UIView+Stripe_SafeAreaBounds.h"
 #import "UIViewController+Stripe_KeyboardAvoiding.h"
 #import "UIViewController+Stripe_NavigationItemProxy.h"
 #import "UIViewController+Stripe_ParentViewController.h"
@@ -53,7 +54,7 @@
     linkPKPaymentAuthorizationViewControllerBlocksCategory();
     linkPKPaymentCategory();
     linkSTPAPIClientApplePayCategory();
-    linkSTPCustomerSourceTupleCategory();
+    linkSTPCardValidatorPrivateCategory();
     linkUIBarButtonItemCategory();
     linkUIImageCategory();
     linkUINavigationBarThemeCategory();
@@ -65,6 +66,7 @@
     linkUIViewControllerParentViewControllerCategory();
     linkUIViewControllerPromisesCategory();
     linkUIViewFirstResponderCategory();
+    linkUIViewSafeAreaBoundsCategory();
     linkNSCharacterSetCategory();
 }
 

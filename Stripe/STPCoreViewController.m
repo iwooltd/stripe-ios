@@ -58,6 +58,7 @@
         self.cancelItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
                                                                         target:self
                                                                         action:@selector(handleCancelTapped:)];
+        self.cancelItem.accessibilityIdentifier = @"CoreViewControllerCancelIdentifier";
 
         self.stp_navigationItemProxy.leftBarButtonItem = self.cancelItem;
     }
@@ -74,7 +75,9 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.automaticallyAdjustsScrollViewInsets = NO;
+
+    self.automaticallyAdjustsScrollViewInsets = YES;
+
     [self createAndSetupViews];
     [self updateAppearance];
 }

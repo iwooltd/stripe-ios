@@ -11,24 +11,50 @@
 @import OCMock;
 
 #import "Stripe.h"
+#import "STPFixtures.h"
 #import "STPFormTextField.h"
 #import "STPPaymentCardTextFieldViewModel.h"
-
-@interface STPFormTextField(Testing)
-@property (nonatomic) BOOL skipsReloadingInputViews;
-@end
 
 @interface STPPaymentCardTextField (Testing)
 @property (nonatomic, readwrite, weak) UIImageView *brandImageView;
 @property (nonatomic, readwrite, weak) STPFormTextField *numberField;
 @property (nonatomic, readwrite, weak) STPFormTextField *expirationField;
 @property (nonatomic, readwrite, weak) STPFormTextField *cvcField;
+@property (nonatomic, readwrite, weak) STPFormTextField *postalCodeField;
 @property (nonatomic, readonly, weak) STPFormTextField *currentFirstResponderField;
 @property (nonatomic, readwrite, strong) STPPaymentCardTextFieldViewModel *viewModel;
 @property (nonatomic, copy) NSNumber *focusedTextFieldForLayout;
 + (UIImage *)cvcImageForCardBrand:(STPCardBrand)cardBrand;
 + (UIImage *)brandImageForCardBrand:(STPCardBrand)cardBrand;
 @end
+
+/**
+ Class that implements STPPaymentCardTextFieldDelegate and uses a block for each delegate method.
+ */
+@interface PaymentCardTextFieldBlockDelegate: NSObject <STPPaymentCardTextFieldDelegate>
+@property (nonatomic, strong, nullable) void (^didChange)(STPPaymentCardTextField *);
+@property (nonatomic, strong, nullable) void (^willEndEditingForReturn)(STPPaymentCardTextField *);
+@property (nonatomic, strong, nullable) void (^didEndEditing)(STPPaymentCardTextField *);
+// add more properties for other delegate methods as this test needs them
+@end
+@implementation PaymentCardTextFieldBlockDelegate
+- (void)paymentCardTextFieldDidChange:(STPPaymentCardTextField *)textField {
+    if (self.didChange) {
+        self.didChange(textField);
+    }
+}
+- (void)paymentCardTextFieldWillEndEditingForReturn:(STPPaymentCardTextField *)textField {
+    if (self.willEndEditingForReturn) {
+        self.willEndEditingForReturn(textField);
+    }
+}
+- (void)paymentCardTextFieldDidEndEditing:(STPPaymentCardTextField *)textField {
+    if (self.didEndEditing) {
+        self.didEndEditing(textField);
+    }
+}
+@end
+
 
 @interface STPPaymentCardTextFieldTest : XCTestCase
 @end
@@ -55,7 +81,7 @@
 
 - (void)testSetCard_numberUnknown {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"1";
     card.number = number;
     [sut setCardParams:card];
@@ -73,9 +99,9 @@
 
 - (void)testSetCard_expiration {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
-    card.expMonth = 10;
-    card.expYear = 99;
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
+    card.expMonth = @(10);
+    card.expYear = @(99);
     [sut setCardParams:card];
     NSData *imgData = UIImagePNGRepresentation(sut.brandImageView.image);
     NSData *expectedImgData = UIImagePNGRepresentation([STPPaymentCardTextField brandImageForCardBrand:STPCardBrandUnknown]);
@@ -92,7 +118,7 @@
 
 - (void)testSetCard_CVC {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *cvc = @"123";
     card.cvc = cvc;
     [sut setCardParams:card];
@@ -109,9 +135,19 @@
     XCTAssertFalse(sut.isValid);
 }
 
+- (void)testSetCard_updatesCVCValidity {
+    STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
+    sut.numberField.text = @"378282246310005";
+    sut.cvcField.text = @"1234";
+    sut.expirationField.text = @"10/99";
+    XCTAssertTrue(sut.cvcField.validText);
+    sut.numberField.text = @"4242424242424242";
+    XCTAssertFalse(sut.cvcField.validText);
+}
+
 - (void)testSetCard_numberVisa {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"4242";
     card.number = number;
     [sut setCardParams:card];
@@ -131,7 +167,7 @@
 
 - (void)testSetCard_numberVisaInvalid {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"4242111111111111";
     card.number = number;
     [sut setCardParams:card];
@@ -143,7 +179,7 @@
 
 - (void)testSetCard_numberAmex {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"3782";
     card.number = number;
     [sut setCardParams:card];
@@ -162,7 +198,7 @@
 
 - (void)testSetCard_numberAmexInvalid {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"378282246311111";
     card.number = number;
     [sut setCardParams:card];
@@ -176,11 +212,11 @@
 
 - (void)testSetCard_numberAndExpiration {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"4242424242424242";
     card.number = number;
-    card.expMonth = 10;
-    card.expYear = 99;
+    card.expMonth = @(10);
+    card.expYear = @(99);
     [sut setCardParams:card];
     NSData *imgData = UIImagePNGRepresentation(sut.brandImageView.image);
     NSData *expectedImgData = UIImagePNGRepresentation([STPPaymentCardTextField brandImageForCardBrand:STPCardBrandVisa]);
@@ -196,11 +232,11 @@
 
 - (void)testSetCard_partialNumberAndExpiration {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"42";
     card.number = number;
-    card.expMonth = 10;
-    card.expYear = 99;
+    card.expMonth = @(10);
+    card.expYear = @(99);
     [sut setCardParams:card];
     NSData *imgData = UIImagePNGRepresentation(sut.brandImageView.image);
     NSData *expectedImgData = UIImagePNGRepresentation([STPPaymentCardTextField brandImageForCardBrand:STPCardBrandVisa]);
@@ -217,7 +253,7 @@
 
 - (void)testSetCard_numberAndCVC {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"378282246310005";
     NSString *cvc = @"123";
     card.number = number;
@@ -237,10 +273,10 @@
 
 - (void)testSetCard_expirationAndCVC {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *cvc = @"123";
-    card.expMonth = 10;
-    card.expYear = 99;
+    card.expMonth = @(10);
+    card.expYear = @(99);
     card.cvc = cvc;
     [sut setCardParams:card];
     NSData *imgData = UIImagePNGRepresentation(sut.brandImageView.image);
@@ -258,12 +294,12 @@
 
 - (void)testSetCard_completeCard {
     STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"4242424242424242";
     NSString *cvc = @"123";
     card.number = number;
-    card.expMonth = 10;
-    card.expYear = 99;
+    card.expMonth = @(10);
+    card.expYear = @(99);
     card.cvc = cvc;
     [sut setCardParams:card];
     NSData *imgData = UIImagePNGRepresentation(sut.brandImageView.image);
@@ -283,7 +319,7 @@
     sut.numberField.text = @"4242424242424242";
     sut.cvcField.text = @"123";
     sut.expirationField.text = @"10/99";
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     [sut setCardParams:card];
     NSData *imgData = UIImagePNGRepresentation(sut.brandImageView.image);
     NSData *expectedImgData = UIImagePNGRepresentation([STPPaymentCardTextField brandImageForCardBrand:STPCardBrandUnknown]);
@@ -300,28 +336,6 @@
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated"
-
-- (void)testSetCard_addressFields {
-    STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
-
-    STPCardParams *cardParams = [STPCardParams new];
-    cardParams.name = @"John S";
-    cardParams.addressLine1 = @"123 Main St";
-    cardParams.addressLine2 = @"#3B";
-    cardParams.addressCity = @"San Francisco";
-    cardParams.addressState = @"CA";
-    cardParams.addressZip = @"12345";
-    cardParams.addressCountry = @"US";
-    sut.cardParams = cardParams;
-
-    XCTAssertEqualObjects(sut.cardParams.name, @"John S");
-    XCTAssertEqualObjects(sut.cardParams.addressLine1, @"123 Main St");
-    XCTAssertEqualObjects(sut.cardParams.addressLine2, @"#3B");
-    XCTAssertEqualObjects(sut.cardParams.addressCity, @"San Francisco");
-    XCTAssertEqualObjects(sut.cardParams.addressState, @"CA");
-    XCTAssertEqualObjects(sut.cardParams.addressZip, @"12345");
-    XCTAssertEqualObjects(sut.cardParams.addressCountry, @"US");
-}
 
 #pragma clang diagnostic pop
 
@@ -345,12 +359,52 @@
     sut.cvcField.text = @"123";
     sut.expirationField.text = @"10/99";
 
-    STPCardParams *params = sut.cardParams;
+    STPPaymentMethodCardParams *params = sut.cardParams;
     XCTAssertNotNil(params);
     XCTAssertEqualObjects(params.number, @"4242424242424242");
     XCTAssertEqualObjects(params.cvc, @"123");
-    XCTAssertEqual((int)params.expMonth, 10);
-    XCTAssertEqual((int)params.expYear, 99);
+    XCTAssertEqual(params.expMonth.integerValue, 10);
+    XCTAssertEqual(params.expYear.integerValue, 99);
+}
+
+- (void)testAccessingCardParamsDuringSettingCardParams {
+    PaymentCardTextFieldBlockDelegate *delegate = [PaymentCardTextFieldBlockDelegate new];
+    delegate.didChange = ^(STPPaymentCardTextField *textField) {
+        // delegate reads the `cardParams` for any reason it wants
+        [textField cardParams];
+    };
+    STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
+    sut.delegate = delegate;
+
+    STPPaymentMethodCardParams *params = [STPPaymentMethodCardParams new];
+    params.number = @"4242424242424242";
+    params.cvc = @"123";
+
+    sut.cardParams = params;
+    STPPaymentMethodCardParams *actual = sut.cardParams;
+
+    XCTAssertEqualObjects(@"4242424242424242", actual.number);
+    XCTAssertEqualObjects(@"123", actual.cvc);
+}
+
+- (void)testSetCardParamsCopiesObject {
+    STPPaymentCardTextField *sut = [STPPaymentCardTextField new];
+    STPPaymentMethodCardParams *params = [STPPaymentMethodCardParams new];
+
+    params.number = @"4242424242424242"; // legit
+    sut.cardParams = params;
+
+    // fetching `sut.cardParams` returns a copy, so edits happen to caller's copy
+    sut.cardParams.number = @"number 1";
+
+    // `sut` copied `params` (& `params.address`) when set, so edits to original don't show up
+    params.number = @"number 2";
+
+    XCTAssertEqualObjects(@"4242424242424242", sut.cardParams.number, @"set via setCardParams:");
+
+    XCTAssertNotEqualObjects(@"number 1", sut.cardParams.number, @"return value from cardParams cannot be edited inline");
+
+    XCTAssertNotEqualObjects(@"number 2", sut.cardParams.number, @"caller changed their copy after setCardParams:");
 }
 
 @end
@@ -366,9 +420,6 @@
     [super setUp];
     self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
     STPPaymentCardTextField *textField = [[STPPaymentCardTextField alloc] initWithFrame:self.window.bounds];
-    textField.numberField.skipsReloadingInputViews = YES;
-    textField.expirationField.skipsReloadingInputViews = YES;
-    textField.cvcField.skipsReloadingInputViews = YES;
     [self.window addSubview:textField];
     XCTAssertTrue([textField.numberField canBecomeFirstResponder], @"text field cannot become first responder");
     self.sut = textField;
@@ -378,12 +429,12 @@
 
 - (void)testSetCard_allFields_whileEditingNumber {
     XCTAssertTrue([self.sut.numberField becomeFirstResponder], @"text field is not first responder");
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"4242424242424242";
     NSString *cvc = @"123";
     card.number = number;
-    card.expMonth = 10;
-    card.expYear = 99;
+    card.expMonth = @(10);
+    card.expYear = @(99);
     card.cvc = cvc;
     [self.sut setCardParams:card];
     NSData *imgData = UIImagePNGRepresentation(self.sut.brandImageView.image);
@@ -394,17 +445,17 @@
     XCTAssertEqualObjects(self.sut.numberField.text, number);
     XCTAssertEqualObjects(self.sut.expirationField.text, @"10/99");
     XCTAssertEqualObjects(self.sut.cvcField.text, cvc);
-    XCTAssertFalse([self.sut isFirstResponder]);
+    XCTAssertFalse([self.sut isFirstResponder], @"after `setCardParams:`, if all fields are valid, should resign firstResponder");
     XCTAssertTrue(self.sut.isValid);
 }
 
 - (void)testSetCard_partialNumberAndExpiration_whileEditingExpiration {
     XCTAssertTrue([self.sut.expirationField becomeFirstResponder], @"text field is not first responder");
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"42";
     card.number = number;
-    card.expMonth = 10;
-    card.expYear = 99;
+    card.expMonth = @(10);
+    card.expYear = @(99);
     [self.sut setCardParams:card];
     NSData *imgData = UIImagePNGRepresentation(self.sut.brandImageView.image);
     NSData *expectedImgData = UIImagePNGRepresentation([STPPaymentCardTextField brandImageForCardBrand:STPCardBrandVisa]);
@@ -415,13 +466,13 @@
     XCTAssertEqualObjects(self.sut.numberField.text, number);
     XCTAssertEqualObjects(self.sut.expirationField.text, @"10/99");
     XCTAssertEqual(self.sut.cvcField.text.length, (NSUInteger)0);
-    XCTAssertTrue([self.sut.numberField isFirstResponder]);
+    XCTAssertTrue([self.sut.numberField isFirstResponder], @"after `setCardParams:`, when firstResponder becomes valid, first invalid field should become firstResponder");
     XCTAssertFalse(self.sut.isValid);
 }
 
 - (void)testSetCard_number_whileEditingCVC {
     XCTAssertTrue([self.sut.cvcField becomeFirstResponder], @"text field is not first responder");
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     NSString *number = @"4242424242424242";
     card.number = number;
     [self.sut setCardParams:card];
@@ -434,7 +485,7 @@
     XCTAssertEqualObjects(self.sut.numberField.text, number);
     XCTAssertEqual(self.sut.expirationField.text.length, (NSUInteger)0);
     XCTAssertEqual(self.sut.cvcField.text.length, (NSUInteger)0);
-    XCTAssertTrue([self.sut.cvcField isFirstResponder]);
+    XCTAssertTrue([self.sut.cvcField isFirstResponder], @"after `setCardParams:`, if firstResponder is invalid, it should remain firstResponder");
     XCTAssertFalse(self.sut.isValid);
 }
 
@@ -443,7 +494,7 @@
     self.sut.cvcField.text = @"123";
     self.sut.expirationField.text = @"10/99";
     XCTAssertTrue([self.sut.numberField becomeFirstResponder], @"text field is not first responder");
-    STPCardParams *card = [STPCardParams new];
+    STPPaymentMethodCardParams *card = [STPPaymentMethodCardParams new];
     [self.sut setCardParams:card];
     NSData *imgData = UIImagePNGRepresentation(self.sut.brandImageView.image);
     NSData *expectedImgData = UIImagePNGRepresentation([STPPaymentCardTextField brandImageForCardBrand:STPCardBrandUnknown]);
@@ -454,7 +505,7 @@
     XCTAssertEqual(self.sut.numberField.text.length, (NSUInteger)0);
     XCTAssertEqual(self.sut.expirationField.text.length, (NSUInteger)0);
     XCTAssertEqual(self.sut.cvcField.text.length, (NSUInteger)0);
-    XCTAssertTrue([self.sut.numberField isFirstResponder]);
+    XCTAssertTrue([self.sut.numberField isFirstResponder], @"after `setCardParams:` that clears the text fields, the first invalid field should become firstResponder");
     XCTAssertFalse(self.sut.isValid);
 }
 
@@ -484,6 +535,115 @@
     self.sut.cvcField.text = @"123";
 
     [self waitForExpectationsWithTimeout:2 handler:nil];
+}
+
+- (void)testBecomeFirstResponder {
+    XCTAssertTrue([self.sut canBecomeFirstResponder]);
+    XCTAssertTrue([self.sut becomeFirstResponder]);
+    XCTAssertTrue(self.sut.isFirstResponder);
+
+    XCTAssertEqual(self.sut.numberField, self.sut.currentFirstResponderField);
+
+    [self.sut becomeFirstResponder];
+    XCTAssertEqual(self.sut.numberField, self.sut.currentFirstResponderField,
+                   @"Repeated calls to becomeFirstResponder should not change the firstResponder");
+
+    self.sut.numberField.text = @"4242" "4242" "4242" "4242";
+
+    XCTAssertEqual(self.sut.expirationField, self.sut.currentFirstResponderField,
+                   @"Once numberField is valid, firstResponder should move to the next field (expiration)");
+
+    XCTAssertTrue([self.sut.cvcField becomeFirstResponder]);
+    XCTAssertEqual(self.sut.cvcField, self.sut.currentFirstResponderField,
+                   @"We don't block other fields from becoming firstResponder");
+
+    XCTAssertTrue([self.sut becomeFirstResponder]);
+    XCTAssertEqual(self.sut.cvcField, self.sut.currentFirstResponderField,
+                   @"Calling becomeFirstResponder does not change the currentFirstResponder");
+
+    self.sut.expirationField.text = @"10/99";
+    self.sut.cvcField.text = @"123";
+
+    XCTAssertTrue(self.sut.isValid);
+    [self.sut resignFirstResponder];
+    XCTAssertTrue([self.sut canBecomeFirstResponder]);
+    XCTAssertTrue([self.sut becomeFirstResponder]);
+
+    XCTAssertEqual(self.sut.cvcField, self.sut.currentFirstResponderField,
+                   @"When all fields are valid, the last one should be the preferred firstResponder");
+
+    self.sut.postalCodeEntryEnabled = YES;
+    XCTAssertFalse(self.sut.isValid);
+
+    [self.sut resignFirstResponder];
+    XCTAssertTrue([self.sut becomeFirstResponder]);
+    XCTAssertEqual(self.sut.postalCodeField, self.sut.currentFirstResponderField,
+                   @"When postalCodeEntryEnabled=YES, it should become firstResponder after other fields are valid");
+
+    self.sut.expirationField.text = @"";
+    [self.sut resignFirstResponder];
+    XCTAssertTrue([self.sut becomeFirstResponder]);
+    XCTAssertEqual(self.sut.expirationField, self.sut.currentFirstResponderField,
+                   @"Moves firstResponder back to expiration, because it's not valid anymore");
+
+    self.sut.expirationField.text = @"10/99";
+    self.sut.postalCodeField.text = @"90210";
+
+    XCTAssertTrue(self.sut.isValid);
+    [self.sut resignFirstResponder];
+    XCTAssertTrue([self.sut becomeFirstResponder]);
+    XCTAssertEqual(self.sut.postalCodeField, self.sut.currentFirstResponderField,
+                   @"When all fields are valid, the last one should be the preferred firstResponder");
+}
+
+- (void)testShouldReturnCyclesThroughFields {
+    PaymentCardTextFieldBlockDelegate *delegate = [PaymentCardTextFieldBlockDelegate new];
+    delegate.willEndEditingForReturn = ^(__unused STPPaymentCardTextField *textField) {
+        XCTFail(@"Did not expect editing to end in this test");
+    };
+    self.sut.delegate = delegate;
+
+    [self.sut becomeFirstResponder];
+    XCTAssertTrue(self.sut.numberField.isFirstResponder);
+
+    XCTAssertFalse([self.sut.numberField.delegate textFieldShouldReturn:self.sut.numberField], @"shouldReturn = NO");
+    XCTAssertTrue(self.sut.expirationField.isFirstResponder, @"with side effect to move 1st responder to next field");
+
+    XCTAssertFalse([self.sut.expirationField.delegate textFieldShouldReturn:self.sut.expirationField], @"shouldReturn = NO");
+    XCTAssertTrue(self.sut.cvcField.isFirstResponder, @"with side effect to move 1st responder to next field");
+
+    XCTAssertFalse([self.sut.cvcField.delegate textFieldShouldReturn:self.sut.cvcField], @"shouldReturn = NO");
+    XCTAssertTrue(self.sut.numberField.isFirstResponder, @"with side effect to move 1st responder from last field to first invalid field");
+}
+
+- (void)testShouldReturnDismissesWhenValid {
+    __block BOOL hasReturned = NO;
+    __block BOOL didEnd = NO;
+
+    [self.sut setCardParams:[STPFixtures paymentMethodCardParams]];
+
+    PaymentCardTextFieldBlockDelegate *delegate = [PaymentCardTextFieldBlockDelegate new];
+    delegate.willEndEditingForReturn = ^(__unused STPPaymentCardTextField *textField) {
+        XCTAssertFalse(didEnd, @"willEnd is called before didEnd");
+        XCTAssertFalse(hasReturned, @"willEnd is only called once");
+        hasReturned = YES;
+    };
+    delegate.didEndEditing = ^(__unused STPPaymentCardTextField *textField) {
+        XCTAssertTrue(hasReturned, @"didEndEditing should be called after willEnd");
+        XCTAssertFalse(didEnd, @"didEnd is only called once");
+        didEnd = YES;
+    };
+
+    self.sut.delegate = delegate;
+    [self.sut becomeFirstResponder];
+    XCTAssertTrue(self.sut.cvcField.isFirstResponder, @"when textfield is filled out, default first responder is the last field");
+
+    XCTAssertFalse(hasReturned, @"willEndEditingForReturn delegate method should not have been called yet");
+    XCTAssertFalse([self.sut.cvcField.delegate textFieldShouldReturn:self.sut.cvcField], @"shouldReturn = NO");
+
+    XCTAssertNil(self.sut.currentFirstResponderField, @"Should have resigned first responder");
+    XCTAssertTrue(hasReturned, @"delegate method has been invoked");
+    XCTAssertTrue(didEnd, @"delegate method has been invoked");
 }
 
 @end

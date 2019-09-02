@@ -1,3 +1,184 @@
+## 17.0.0 ??
+* Updates API version from 2015-10-12 to 2019-05-16
+  * Adds `STPSourceRedirectStatusNotRequired` to `STPSourceRedirectStatus`.  Previously, optional redirects were marked as `STPSourceRedirectStatusSucceeded`. 
+  * Adds `STPSourceCard3DSecureStatusRecommended` to `STPSourceCard3DSecureStatus`.  
+  * Removes `STPLegalEntityParams`.  Initialize an `STPConnectAccountParams` with an `individual` or `company` dictionary instead. See https://stripe.com/docs/api/tokens/create_account#create_account_token-account
+* Changes the `STPPaymentContextDelegate paymentContext:didCreatePaymentResult:completion:` completion block type to `STPPaymentStatusBlock`, to let you inform the context that the user canceled.
+
+## 16.0.7 2019-08-23
+* Fixes STPThreeDSUICustomization not initializing defaults correctly. [#1303](https://github.com/stripe/stripe-ios/pull/1303) 
+* Fixes STPPaymentHandler treating post-authentication errors as authentication errors [#1291](https://github.com/stripe/stripe-ios/pull/1291)
+* Removes preferredStatusBarStyle from STPThreeDSUICustomization, see STPThreeDSNavigationBarCustomization.barStyle instead [#1308](https://github.com/stripe/stripe-ios/pull/1308)
+
+## 16.0.6 2019-08-13
+* Adds a method to STPAuthenticationContext allowing you to configure the SFSafariViewController presented for web-based authentication.
+* Adds STPAddress initializer that takes STPPaymentMethodBillingDetails. [#1278](https://github.com/stripe/stripe-ios/pull/1278)
+* Adds convenience method to populate STPUserInformation with STPPaymentMethodBillingDetails. [#1278](https://github.com/stripe/stripe-ios/pull/1278)
+* STPShippingAddressViewController prefills billing address for PaymentMethods too now, not just Card. [#1278](https://github.com/stripe/stripe-ios/pull/1278)
+* Update libStripe3DS2.a to avoid a conflict with Firebase. [#1293](https://github.com/stripe/stripe-ios/issues/1293)
+
+## 16.0.5 2019-08-09
+* Fixed an compatibility issue when building with certain Cocoapods configurations. [#1288](https://github.com/stripe/stripe-ios/issues/1288)
+
+## 16.0.4 2019-08-08
+* Improved compatibility with other OpenSSL-using libraries. [#1265](https://github.com/stripe/stripe-ios/issues/1265)
+* Fixed compatibility with Xcode 10.1. [#1273](https://github.com/stripe/stripe-ios/issues/1273)
+* Fixed an issue where STPPaymentContext could be left in a bad state when cancelled. [#1284](https://github.com/stripe/stripe-ios/pull/1284)
+
+## 16.0.3 2019-08-01
+* Changes to code obfuscation, resolving an issue with App Store review [#1269](https://github.com/stripe/stripe-ios/pull/1269)
+* Adds Apple Pay support to STPPaymentHandler [#1264](https://github.com/stripe/stripe-ios/pull/1264)
+
+## 16.0.2 2019-07-29
+* Adds API to let users set a default payment option for Standard Integration [#1252](https://github.com/stripe/stripe-ios/pull/1252)
+* Removes querying the Advertising Identifier (IDFA).
+* Adds customizable UIStatusBarStyle to STDSUICustomization.
+
+## 16.0.1 2019-07-25
+* Migrates Stripe3DS2.framework to libStripe3DS2.a, resolving an issue with App Store validation. [#1246](https://github.com/stripe/stripe-ios/pull/1246)
+* Fixes a crash in STPPaymentHandler. [#1244](https://github.com/stripe/stripe-ios/pull/1244)
+
+## 16.0.0 2019-07-18
+* Migrates STPPaymentCardTextField.cardParams property type from STPCardParams to STPPaymentMethodCardParams
+* STPAddCardViewController:
+    * Migrates addCardViewController:didCreateSource:completion: and addCardViewController:didCreateToken:completion: to addCardViewController:didCreatePaymentMethod:completion
+    * Removes managedAccountCurrency property - there’s no equivalent parameter necessary for PaymentMethods.
+* STPPaymentOptionViewController now shows, adds, removes PaymentMethods instead of Source/Tokens. 
+* STPCustomerContext, STPBackendAPIAdapter:
+    * Removes selectDefaultCustomerSource:completion: -  Users must explicitly select their Payment Method of choice.
+    * Migrates detachSourceFromCustomer:completion:, attachSourceToCustomer:completion to detachPaymentMethodFromCustomer:completion:, attachPaymentMethodToCustomer:completion:
+    * Adds listPaymentMethodsForCustomerWithCompletion: - the Customer object doesn’t contain attached Payment Methods; you must fetch it from the Payment Methods API.
+* STPPaymentContext now uses the new Payment Method APIs listed above instead of Source/Token, and returns the reworked STPPaymentResult containing a PaymentMethod.
+* Migrates STPPaymentResult.source to paymentMethod of type STPPaymentMethod
+* Deprecates STPPaymentIntentAction* types, replaced by STPIntentAction*. [#1208](https://github.com/stripe/stripe-ios/pull/1208)
+  * Deprecates `STPPaymentIntentAction`, replaced by `STPIntentAction`
+  * Deprecates `STPPaymentIntentActionType`, replaced by `STPIntentActionType`
+  * Deprecates `STPPaymentIntentActionRedirectToURL`, replaced by `STPIntentActionTypeRedirectToURL`
+* Adds support for SetupIntents.  See https://stripe.com/docs/payments/cards/saving-cards#saving-card-without-payment
+* Adds support for 3DS2 authentication.  See https://stripe.com/docs/mobile/ios/authentication
+
+## 15.0.1 2019-04-16
+* Adds configurable support for JCB (Apple Pay). [#1158](https://github.com/stripe/stripe-ios/pull/1158)
+* Updates sample apps to use `PaymentIntents` and `PaymentMethods` where available. [#1159](https://github.com/stripe/stripe-ios/pull/1159)
+* Changes `STPPaymentMethodCardParams` `expMonth` and `expYear` property types to `NSNumber *` to fix a bug using Apple Pay. [#1161](https://github.com/stripe/stripe-ios/pull/1161)
+
+## 15.0.0 2019-3-19
+* Renames all former references to 'PaymentMethod' to 'PaymentOption'. See [MIGRATING.md](/MIGRATING.md) for more details. [#1139](https://github.com/stripe/stripe-ios/pull/1139) 
+  * Renames `STPPaymentMethod` to `STPPaymentOption`
+  * Renames `STPPaymentMethodType` to `STPPaymentOptionType`
+  * Renames `STPApplePaymentMethod` to `STPApplePayPaymentOption`
+  * Renames `STPPaymentMethodTuple` to `STPPaymentOptionTuple`
+  * Renames `STPPaymentMethodsViewController` to `STPPaymentOptionsViewController`
+  * Renames all properties, methods, comments referencing 'PaymentMethod' to 'PaymentOption'
+* Rewrites `STPaymentMethod` and `STPPaymentMethodType` to match the [Stripe API](https://stripe.com/docs/api/payment_methods/object). [#1140](https://github.com/stripe/stripe-ios/pull/1140).
+* Adds `[STPAPI createPaymentMethodWithParams:completion:]`, which creates a PaymentMethod. [#1141](https://github.com/stripe/stripe-ios/pull/1141)
+* Adds `paymentMethodParams` and `paymentMethodId` to `STPPaymentIntentParams`.  You can now confirm a PaymentIntent with a PaymentMethod. [#1142](https://github.com/stripe/stripe-ios/pull/1142)
+* Adds `paymentMethodTypes` to `STPPaymentIntent`.
+* Deprecates several Source-named properties, based on changes to the [Stripe API](https://stripe.com/docs/upgrades#2019-02-11). [#1146](https://github.com/stripe/stripe-ios/pull/1146)
+  * Deprecates `STPPaymentIntentParams.saveSourceToCustomer`, replaced by `savePaymentMethod` 
+  * Deprecates `STPPaymentIntentsStatusRequiresSource`, replaced by `STPPaymentIntentsStatusRequiresPaymentMethod`
+  * Deprecates `STPPaymentIntentsStatusRequiresSourceAction`, replaced by `STPPaymentIntentsStatusRequiresAction`
+  * Deprecates `STPPaymentIntentSourceAction`, replaced by `STPPaymentIntentAction`
+  * Deprecates `STPPaymentSourceActionAuthorizeWithURL`, replaced by `STPPaymentActionRedirectToURL`
+  * Deprecates `STPPaymentIntent.nextSourceAction`, replaced by `nextAction`
+* Added new localizations for the following languages [#1050](https://github.com/stripe/stripe-ios/pull/1050)
+  * Danish
+  * Spanish (Argentina/Latin America)
+  * French (Canada)
+  * Norwegian
+  * Portuguese (Brazil)
+  * Portuguese (Portugal)
+  * Swedish
+* Deprecates `STPEphemeralKeyProvider`, replaced by `STPCustomerEphemeralKeyProvider`.  We now allow for ephemeral keys that are not customer [#1131](https://github.com/stripe/stripe-ios/pull/1131)
+* Adds CVC image for Amex cards [#1046](https://github.com/stripe/stripe-ios/pull/1046)
+* Fixed `STPPaymentCardTextField.nextFirstResponderField` to never return nil [#1059](https://github.com/stripe/stripe-ios/pull/1059)
+* Improves return key functionality for `STPPaymentCardTextField`, `STPAddCardViewController` [#1059](https://github.com/stripe/stripe-ios/pull/1059)
+* Add postal code support for Saudi Arabia [#1127](https://github.com/stripe/stripe-ios/pull/1127)
+* CVC field updates validity if card number/brand change [#1128](https://github.com/stripe/stripe-ios/pull/1128)
+
+## 14.0.0 2018-11-14
+* Changes `STPPaymentCardTextField`, which now copies the `cardParams` property. See [MIGRATING.md](/MIGRATING.md) for more details. [#1031](https://github.com/stripe/stripe-ios/pull/1031)
+* Renames `STPPaymentIntentParams.returnUrl` to `STPPaymentIntentParams.returnURL`. [#1037](https://github.com/stripe/stripe-ios/pull/1037)
+* Removes `STPPaymentIntent.returnUrl` and adds `STPPaymentIntent.nextSourceAction`, based on changes to the [Stripe API](https://stripe.com/docs/upgrades#2018-11-08). [#1038](https://github.com/stripe/stripe-ios/pull/1038)
+* Adds `STPVerificationParams.document_back` property. [#1017](https://github.com/stripe/stripe-ios/pull/1017)
+* Fixes bug in `STPPaymentMethodsViewController` where selected payment method changes back if it wasn't dismissed in the `didFinish` delegate method. [#1020](https://github.com/stripe/stripe-ios/pull/1020)
+
+## 13.2.0 2018-08-14
+* Adds `STPPaymentMethod` protocol implementation for `STPSource`. You can now call `image`/`templatedImage`/`label` on a source. [#976](https://github.com/stripe/stripe-ios/pull/976)
+* Fixes crash in `STPAddCardViewController` with some prefilled billing addresses [#1004](https://github.com/stripe/stripe-ios/pull/1004)
+* Fixes `STPPaymentCardTextField` layout issues on small screens [#1009](https://github.com/stripe/stripe-ios/pull/1009)
+* Fixes hidden text fields in `STPPaymentCardTextField` from being read by VoiceOver [#1012](https://github.com/stripe/stripe-ios/pull/1012)
+* Updates example app to add client-side metadata `charge_request_id` to requests to `example-ios-backend` [#1008](https://github.com/stripe/stripe-ios/pull/1008)
+
+## 13.1.0 2018-07-13
+* Adds `STPPaymentIntent` to support PaymentIntents. [#985](https://github.com/stripe/stripe-ios/pull/985), [#986](https://github.com/stripe/stripe-ios/pull/986), [#987](https://github.com/stripe/stripe-ios/pull/987), [#988](https://github.com/stripe/stripe-ios/pull/988)
+* Reduce `NSURLSession` memory footprint. [#969](https://github.com/stripe/stripe-ios/pull/969)
+* Fixes invalid JSON error when deleting `Card` from a `Customer`. [#992](https://github.com/stripe/stripe-ios/pull/992)
+
+## 13.0.3 2018-06-11
+* Fixes payment method label overlapping the checkmark, for Amex on small devices [#952](https://github.com/stripe/stripe-ios/pull/952)
+* Adds EPS and Multibanco support to `STPSourceParams` [#961](https://github.com/stripe/stripe-ios/pull/961)
+* Adds `STPBillingAddressFieldsName` option to `STPBillingAddressFields` [#964](https://github.com/stripe/stripe-ios/pull/964)
+* Fixes crash in `STPColorUtils.perceivedBrightnessForColor` [#954](https://github.com/stripe/stripe-ios/pull/954)
+* Applies recommended project changes for Xcode 9.4 [#963](https://github.com/stripe/stripe-ios/pull/963)
+* Fixes `[Stripe handleStripeURLCallbackWithURL:url]` incorrectly returning `NO` [#962](https://github.com/stripe/stripe-ios/pull/962)
+
+## 13.0.2 2018-05-24
+* Makes iDEAL `name` parameter optional, also accepts empty string as `nil` [#940](https://github.com/stripe/stripe-ios/pull/940)
+* Adjusts scroll view content offset behavior when focusing on a text field [#943](https://github.com/stripe/stripe-ios/pull/943)
+
+## 13.0.1 2018-05-17
+* Fixes an issue in `STPRedirectContext` causing some redirecting sources to fail in livemode due to prematurely dismissing the `SFSafariViewController` during the initial redirects. [#937](https://github.com/stripe/stripe-ios/pull/937)
+
+## 13.0.0 2018-04-26
+* Removes Bitcoin source support. See MIGRATING.md. [#931](https://github.com/stripe/stripe-ios/pull/931)
+* Adds Masterpass support to `STPSourceParams` [#928](https://github.com/stripe/stripe-ios/pull/928)
+* Adds community submitted Norwegian (nb) translation. Thank @Nailer!
+* Fixes example app usage of localization files (they were not able to be tested in Finnish and Norwegian before)
+* Silences STPAddress deprecation warnings we ignore to stay compatible with older iOS versions
+* Fixes "Card IO" link in full SDK reference [#913](https://github.com/stripe/stripe-ios/pull/913)
+
+## 12.1.2 2018-03-16
+* Updated the "62..." credit card number BIN range to show a UnionPay icon
+
+## 12.1.1 2018-02-22
+* Fix issue with apple pay token creation in PaymentContext, introduced by 12.1.0. [#899](https://github.com/stripe/stripe-ios/pull/899)
+* Now matches clang static analyzer settings with Cocoapods, so you won't see any more analyzer issues. [#897](https://github.com/stripe/stripe-ios/pull/897)
+
+## 12.1.0 2018-02-05
+* Adds `createCardSources` to `STPPaymentConfiguration`. If you enable this option, when your user adds a card in the SDK's UI, a card source will be created and attached to their Stripe Customer. If this option is disabled (the default), a card token is created. For more information on card sources, see https://stripe.com/docs/sources/cards
+
+## 12.0.1 2018-01-31
+* Adding Visa Checkout support to `STPSourceParams` [#889](https://github.com/stripe/stripe-ios/pull/889)
+
+## 12.0.0 2018-01-16
+* Minimum supported iOS version is now 9.0.
+  * If you need to support iOS 8, the last supported version is [11.5.0](https://github.com/stripe/stripe-ios/releases/tag/v11.5.0)
+* Minimum supported Xcode version is now 9.0
+* `AddressBook` framework support has been removed.
+* `STPRedirectContext` will no longer retain itself for the duration of the redirect, you must explicitly maintain a reference to it yourself. [#846](https://github.com/stripe/stripe-ios/pull/846)
+* `STPPaymentConfiguration.requiredShippingAddress` now is a set of `STPContactField` objects instead of a `PKAddressField` bitmask. [#848](https://github.com/stripe/stripe-ios/pull/848)
+* See MIGRATING.md for more information on any of the previously mentioned breaking API changes.
+* Pre-built view controllers now layout properly on iPhone X in landscape orientation, respecting `safeAreaInsets`. [#854](https://github.com/stripe/stripe-ios/pull/854)
+* Fixes a bug in `STPAddCardViewController` that prevented users in countries without postal codes from adding a card when `requiredBillingFields = .Zip`. [#853](https://github.com/stripe/stripe-ios/pull/853)
+* Fixes a bug in `STPPaymentCardTextField`. When completely filled out, it ignored calls to `becomeFirstResponder`. [#855](https://github.com/stripe/stripe-ios/pull/855)
+* `STPPaymentContext` now has a `largeTitleDisplayMode` property, which you can use to control the title display mode in the navigation bar of our pre-built view controllers. [#849](https://github.com/stripe/stripe-ios/pull/849)
+* Fixes a bug where `STPPaymentContext`'s `retryLoading` method would not re-retrieve the customer object, even after calling `STPCustomerContext`'s `clearCachedCustomer` method. [#863](https://github.com/stripe/stripe-ios/pull/863)
+* `STPPaymentContext`'s `retryLoading` method will now always attempt to retrieve a new customer object, regardless of whether a cached customer object is available. Previously, this method was only intended for recovery from a loading error; if a customer had already been retrieved, `retryLoading` would do nothing. [#863](https://github.com/stripe/stripe-ios/pull/863)
+* `STPCustomerContext` has a new property: `includeApplePaySources`. It is turned off by default. [#864](https://github.com/stripe/stripe-ios/pull/864)
+* Adds `UITextContentType` support. This turns on QuickType suggestions for the name, email, and address fields; and uses a better keyboard for Payment Card fields. [#870](https://github.com/stripe/stripe-ios/pull/870)
+* Fixes a bug that prevented redirects to the 3D Secure authentication flow when it was optional. [#878](https://github.com/stripe/stripe-ios/pull/878)
+* `STPPaymentConfiguration` now has a `stripeAccount` property, which can be used to make API requests on behalf of a Connected account. [#875](https://github.com/stripe/stripe-ios/pull/875)
+* Adds `- [STPAPIClient createTokenWithConnectAccount:completion:]`, which creates Tokens for Connect Accounts: (optionally) accepting the Terms of Service, and sending information about the legal entity. [#876](https://github.com/stripe/stripe-ios/pull/876)
+* Fixes an iOS 11 bug in `STPPaymentCardTextField` that blocked tapping on the number field while editing the expiration or CVC on narrow devices (4" screens). [#883](https://github.com/stripe/stripe-ios/pull/883)
+
+## 11.5.0 2017-11-09
+* Adds a new helper method to `STPSourceParams` for creating reusable Alipay sources. [#811](https://github.com/stripe/stripe-ios/pull/811)
+* Silences spurious availability warnings when using Xcode9 [#823](https://github.com/stripe/stripe-ios/pull/823)
+* Auto capitalizes currency code when using `paymentRequestWithMerchantIdentifier ` to improve compatibility with iOS 11 `PKPaymentAuthorizationViewController` [#829](https://github.com/stripe/stripe-ios/pull/829)
+* Fixes a bug in `STPRedirectContext` which caused `SFSafariViewController`-based redirects to incorrectly dismiss when switching apps. [#833](https://github.com/stripe/stripe-ios/pull/833)
+* Fixes a bug that incorrectly offered users the option to "Use Billing Address" on the shipping address screen when there was no existing billing address to fill in. [#834](https://github.com/stripe/stripe-ios/pull/834)
+
 ## 11.4.0 2017-10-20
 * Restores `[STPCard brandFromString:]` method which was marked as deprecated in a recent version [#801](https://github.com/stripe/stripe-ios/pull/801)
 * Adds `[STPBankAccount metadata]` and `[STPCard metadata]` read-only accessors and improves annotation for `[STPSource metadata]` [#808](https://github.com/stripe/stripe-ios/pull/808)

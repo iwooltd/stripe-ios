@@ -53,41 +53,14 @@
     XCTAssertEqual([STPCard brandFromString:@"diners club"], STPCardBrandDinersClub);
     XCTAssertEqual([STPCard brandFromString:@"DINERS CLUB"], STPCardBrandDinersClub);
 
+    XCTAssertEqual([STPCard brandFromString:@"unionpay"], STPCardBrandUnionPay);
+    XCTAssertEqual([STPCard brandFromString:@"UNIONPAY"], STPCardBrandUnionPay);
+
     XCTAssertEqual([STPCard brandFromString:@"unknown"], STPCardBrandUnknown);
     XCTAssertEqual([STPCard brandFromString:@"UNKNOWN"], STPCardBrandUnknown);
     
     XCTAssertEqual([STPCard brandFromString:@"garbage"], STPCardBrandUnknown);
     XCTAssertEqual([STPCard brandFromString:@"GARBAGE"], STPCardBrandUnknown);
-}
-
-- (void)testStringFromBrand {
-    [self forEachBrand:^(STPCardBrand brand) {
-        NSString *string = [STPCard stringFromBrand:brand];
-
-        switch (brand) {
-            case STPCardBrandAmex:
-                XCTAssertEqualObjects(string, @"American Express");
-                break;
-            case STPCardBrandDinersClub:
-                XCTAssertEqualObjects(string, @"Diners Club");
-                break;
-            case STPCardBrandDiscover:
-                XCTAssertEqualObjects(string, @"Discover");
-                break;
-            case STPCardBrandJCB:
-                XCTAssertEqualObjects(string, @"JCB");
-                break;
-            case STPCardBrandMasterCard:
-                XCTAssertEqualObjects(string, @"MasterCard");
-                break;
-            case STPCardBrandVisa:
-                XCTAssertEqualObjects(string, @"Visa");
-                break;
-            case STPCardBrandUnknown:
-                XCTAssertEqualObjects(string, @"Unknown");
-                break;
-        }
-    }];
 }
 
 #pragma mark - STPCardFundingType Tests
@@ -287,7 +260,7 @@
     XCTAssertEqualObjects(card.name, @"Jane Austen");
 
     XCTAssertNotEqual(card.allResponseFields, response);
-    XCTAssertEqualObjects(card.allResponseFields, [response stp_dictionaryByRemovingNullsValidatingRequiredFields:@[]]);
+    XCTAssertEqualObjects(card.allResponseFields, [response stp_dictionaryByRemovingNulls]);
 }
 
 
@@ -299,7 +272,7 @@
     XCTAssertEqualObjects(card.stripeID, @"card_103kbR2eZvKYlo2CDczLmw4K");
 }
 
-#pragma mark - STPPaymentMethod Tests
+#pragma mark - STPPaymentOption Tests
 
 - (void)testImage {
     STPCard *card = [STPFixtures card];
@@ -332,6 +305,7 @@
                                     @(STPCardBrandDiscover),
                                     @(STPCardBrandJCB),
                                     @(STPCardBrandMasterCard),
+                                    @(STPCardBrandUnionPay),
                                     @(STPCardBrandVisa),
                                     @(STPCardBrandUnknown),
                                     ];

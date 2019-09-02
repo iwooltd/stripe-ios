@@ -34,11 +34,11 @@ NSString *const STPExamplePublishableKey = @"bad_key";
                                XCTAssertNil(token, @"Expected no token");
                                XCTAssertNotNil(error, @"Expected error");
                            }];
-    [self waitForExpectationsWithTimeout:10.0f handler:nil];
+    [self waitForExpectationsWithTimeout:20.0f handler:nil];
 }
 
 - (void)testExpired {
-    [self createTokenWithBaseURL:[NSURL URLWithString:@"https://testssl-expire.disig.sk/index.en.html"]
+    [self createTokenWithBaseURL:[NSURL URLWithString:@"https://testssl-expire-r2i2.disig.sk/index.en.html"]
                       completion:^(STPToken *token, NSError *error) {
                           XCTAssertNil(token, @"Token should be nil.");
                           XCTAssertEqualObjects(error.domain, @"NSURLErrorDomain", @"Error should be NSURLErrorDomain");
@@ -65,7 +65,7 @@ NSString *const STPExamplePublishableKey = @"bad_key";
                                [expectation fulfill];
                                completion(token, error);
                            }];
-    [self waitForExpectationsWithTimeout:10.0f handler:nil];
+    [self waitForExpectationsWithTimeout:20.0f handler:nil];
 }
 
 @end

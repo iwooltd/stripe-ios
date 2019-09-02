@@ -9,6 +9,7 @@
 @import XCTest;
 
 #import "STPAPIClient+Private.h"
+#import "STPFixtures.h"
 
 @interface STPAPIClient (Testing)
 
@@ -33,26 +34,48 @@
 
 - (void)testInitWithPublishableKey {
     STPAPIClient *sut = [[STPAPIClient alloc] initWithPublishableKey:@"pk_foo"];
-    NSString *authHeader = sut.urlSession.configuration.HTTPAdditionalHeaders[@"Authorization"];
+    NSString *authHeader = [sut configuredRequestForURL:[NSURL URLWithString:@"https://www.stripe.com"]].allHTTPHeaderFields[@"Authorization"];
     XCTAssertEqualObjects(authHeader, @"Bearer pk_foo");
 }
 
 - (void)testSetPublishableKey {
     STPAPIClient *sut = [[STPAPIClient alloc] initWithPublishableKey:@"pk_foo"];
-    NSString *authHeader = sut.urlSession.configuration.HTTPAdditionalHeaders[@"Authorization"];
+    NSString *authHeader = [sut configuredRequestForURL:[NSURL URLWithString:@"https://www.stripe.com"]].allHTTPHeaderFields[@"Authorization"];
     XCTAssertEqualObjects(authHeader, @"Bearer pk_foo");
     sut.publishableKey = @"pk_bar";
-    authHeader = sut.urlSession.configuration.HTTPAdditionalHeaders[@"Authorization"];
+    authHeader = [sut configuredRequestForURL:[NSURL URLWithString:@"https://www.stripe.com"]].allHTTPHeaderFields[@"Authorization"];
     XCTAssertEqualObjects(authHeader, @"Bearer pk_bar");
 }
 
 - (void)testSetStripeAccount {
     STPAPIClient *sut = [[STPAPIClient alloc] initWithPublishableKey:@"pk_foo"];
-    NSString *accountHeader = sut.urlSession.configuration.HTTPAdditionalHeaders[@"Stripe-Account"];
+    NSString *accountHeader = [sut configuredRequestForURL:[NSURL URLWithString:@"https://www.stripe.com"]].allHTTPHeaderFields[@"Stripe-Account"];
     XCTAssertNil(accountHeader);
     sut.stripeAccount = @"acct_123";
-    accountHeader = sut.urlSession.configuration.HTTPAdditionalHeaders[@"Stripe-Account"];
+    accountHeader = [sut configuredRequestForURL:[NSURL URLWithString:@"https://www.stripe.com"]].allHTTPHeaderFields[@"Stripe-Account"];
     XCTAssertEqualObjects(accountHeader, @"acct_123");
+}
+
+- (void)testInitWithConfiguration {
+    STPPaymentConfiguration *config = [STPFixtures paymentConfiguration];
+    config.stripeAccount = @"acct_123";
+
+    STPAPIClient *sut = [[STPAPIClient alloc] initWithConfiguration:config];
+    XCTAssertEqualObjects(sut.publishableKey, config.publishableKey);
+    XCTAssertEqualObjects(sut.stripeAccount, config.stripeAccount);
+    NSString *accountHeader = [sut configuredRequestForURL:[NSURL URLWithString:@"https://www.stripe.com"]].allHTTPHeaderFields[@"Stripe-Account"];
+    XCTAssertEqualObjects(accountHeader, @"acct_123");
+}
+
+- (void)testSetAppInfo {
+    STPAPIClient *sut = [[STPAPIClient alloc] initWithPublishableKey:@"pk_foo"];
+    sut.appInfo = [[STPAppInfo alloc] initWithName:@"MyAwesomeLibrary" partnerId:@"pp_partner_1234" version:@"1.2.34" url:@"https://myawesomelibrary.info"];
+    NSString *userAgentHeader = [sut configuredRequestForURL:[NSURL URLWithString:@"https://www.stripe.com"]].allHTTPHeaderFields[@"X-Stripe-User-Agent"];
+    NSDictionary *userAgentHeaderDict = [NSJSONSerialization JSONObjectWithData:[userAgentHeader dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
+    XCTAssertEqualObjects(userAgentHeaderDict[@"name"], @"MyAwesomeLibrary");
+    XCTAssertEqualObjects(userAgentHeaderDict[@"partner_id"], @"pp_partner_1234");
+    XCTAssertEqualObjects(userAgentHeaderDict[@"version"], @"1.2.34");
+    XCTAssertEqualObjects(userAgentHeaderDict[@"url"], @"https://myawesomelibrary.info");
 }
 
 @end

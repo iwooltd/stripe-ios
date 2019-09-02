@@ -11,13 +11,19 @@
 #import "STPAPIClient.h"
 #import "STPFile.h"
 #import "STPImageLibrary+Private.h"
+#import "STPNetworkStubbingTestCase.h"
 
 static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
 
-@interface STPFileFunctionalTest : XCTestCase
+@interface STPFileFunctionalTest : STPNetworkStubbingTestCase
 @end
 
 @implementation STPFileFunctionalTest
+
+- (void)setUp {
+//    self.recordingMode = YES;
+    [super setUp];
+}
 
 - (UIImage *)testImage {
 return [UIImage imageNamed:@"stp_test_upload_image.jpeg"

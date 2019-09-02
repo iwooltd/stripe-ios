@@ -19,7 +19,7 @@ if ! command -v xcpretty > /dev/null; then
   fi
 
   info "Installing xcpretty..."
-  gem install xcpretty --no-ri --no-rdoc || die "Executing \`gem install xcpretty\` failed"
+  gem install xcpretty --no-document || die "Executing \`gem install xcpretty\` failed"
 fi
 
 # Build and verify static library
@@ -49,7 +49,7 @@ xcodebuild clean build-for-testing \
   -project "${script_dir}/ManualInstallationTest.xcodeproj" \
   -scheme "ManualInstallationTest" \
   -sdk "iphonesimulator" \
-  -destination "platform=iOS Simulator,name=iPhone 6,OS=10.3.1" \
+  -destination "platform=iOS Simulator,name=iPhone 6,OS=11.2" \
   | xcpretty
 
 xcodebuild_build_exit_code="${PIPESTATUS[0]}"
@@ -62,7 +62,7 @@ xcodebuild test-without-building \
   -project "${script_dir}/ManualInstallationTest.xcodeproj" \
   -scheme "ManualInstallationTest" \
   -sdk "iphonesimulator" \
-  -destination "platform=iOS Simulator,name=iPhone 6,OS=10.3.1" \
+  -destination "platform=iOS Simulator,name=iPhone 6,OS=11.2" \
   | xcpretty
 
 xcodebuild_test_exit_code="${PIPESTATUS[0]}"

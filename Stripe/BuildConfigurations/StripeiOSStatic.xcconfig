@@ -65,21 +65,12 @@ GCC_WARN_UNUSED_PARAMETER = YES
 
 STP_EXTRA_PREPROCESSOR_MACROS = STP_STATIC_LIBRARY_BUILD
 
-// iOS Deployment Target
-// 
-// Code will load on this and later versions of iOS.  Framework APIs that are unavailable
-// in earlier versions will be weak-linked; your code should check for null function
-// pointers or specific system versions before calling newer APIs.
-//
-
-IPHONEOS_DEPLOYMENT_TARGET = 8.0
-
 
 // Other Linker Flags
 // 
 // Options defined in this setting are passed to invocations of the linker.
 
-OTHER_LDFLAGS = -ObjC
+OTHER_LDFLAGS = $(inherited) -ObjC
 
 
 // enable bitcode
@@ -118,3 +109,8 @@ SKIP_INSTALL = YES
 // [debugging, -S]
 
 STRIP_STYLE = non-global
+
+FRAMEWORK_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/InternalFrameworks
+HEADER_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/InternalFrameworks
+
+LIBRARY_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/InternalFrameworks

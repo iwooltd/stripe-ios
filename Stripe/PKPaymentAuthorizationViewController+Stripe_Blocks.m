@@ -10,8 +10,9 @@
 
 #import "PKPaymentAuthorizationViewController+Stripe_Blocks.h"
 #import "STPAPIClient+ApplePay.h"
-
-FAUXPAS_IGNORED_IN_FILE(APIAvailability)
+#import "STPCard.h"
+#import "STPPaymentMethod.h"
+#import "STPToken.h"
 
 static char kSTPBlockBasedApplePayDelegateAssociatedObjectKey;
 
@@ -23,7 +24,7 @@ typedef void (^STPApplePayShippingAddressCompletionBlock)(PKPaymentAuthorization
 @property (nonatomic, copy) STPShippingAddressSelectionBlock onShippingAddressSelection;
 @property (nonatomic, copy) STPShippingMethodSelectionBlock onShippingMethodSelection;
 @property (nonatomic, copy) STPPaymentAuthorizationBlock onPaymentAuthorization;
-@property (nonatomic, copy) STPApplePayTokenHandlerBlock onTokenCreation;
+@property (nonatomic, copy) STPApplePayPaymentMethodHandlerBlock onPaymentMethodCreation;
 @property (nonatomic, copy) STPPaymentCompletionBlock onFinish;
 @property (nonatomic) NSError *lastError;
 @property (nonatomic) BOOL didSucceed;
@@ -33,25 +34,35 @@ typedef void (^STPPaymentAuthorizationStatusCallback)(PKPaymentAuthorizationStat
 
 @implementation STPBlockBasedApplePayDelegate
 
-- (void)paymentAuthorizationViewController:(__unused PKPaymentAuthorizationViewController *)controller
+- (void)paymentAuthorizationViewController:(PKPaymentAuthorizationViewController *)controller
                        didAuthorizePayment:(PKPayment *)payment completion:(STPPaymentAuthorizationStatusCallback)completion {
     self.onPaymentAuthorization(payment);
-    [self.apiClient createTokenWithPayment:payment completion:^(STPToken * _Nullable token, NSError * _Nullable error) {
-        if (error) {
-            self.lastError = error;
+
+    void(^paymentMethodCreateCompletion)(STPPaymentMethod *, NSError *) = ^(STPPaymentMethod *result, NSError *paymentMethodCreateError) {
+        if (paymentMethodCreateError) {
+            self.lastError = paymentMethodCreateError;
             completion(PKPaymentAuthorizationStatusFailure);
             return;
         }
-        self.onTokenCreation(token, ^(NSError *tokenCreationError){
-            if (tokenCreationError) {
-                self.lastError = tokenCreationError;
+        self.onPaymentMethodCreation(result, ^(STPPaymentStatus status, NSError *error) {
+            if (status != STPPaymentStatusSuccess || error) {
+                self.lastError = error;
                 completion(PKPaymentAuthorizationStatusFailure);
+                if (controller.presentingViewController == nil) {
+                    // If we call completion() after dismissing, didFinishWithStatus is NOT called.
+                    [self _finish];
+                }
                 return;
             }
             self.didSucceed = YES;
             completion(PKPaymentAuthorizationStatusSuccess);
+            if (controller.presentingViewController == nil) {
+                // If we call completion() after dismissing, didFinishWithStatus is NOT called.
+                [self _finish];
+            }
         });
-    }];
+    };
+    [self.apiClient createPaymentMethodWithPayment:payment completion:paymentMethodCreateCompletion];
 }
 
 - (void)paymentAuthorizationViewController:(__unused PKPaymentAuthorizationViewController *)controller
@@ -76,24 +87,11 @@ typedef void (^STPPaymentAuthorizationStatusCallback)(PKPaymentAuthorizationStat
     });
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated"
-- (void)paymentAuthorizationViewController:(__unused PKPaymentAuthorizationViewController *)controller
-                  didSelectShippingAddress:(ABRecordRef)address
-                                completion:(STPApplePayShippingAddressCompletionBlock)completion {
-    STPAddress *stpAddress = [[STPAddress alloc] initWithABRecord:address];
-    self.onShippingAddressSelection(stpAddress, ^(STPShippingStatus status, NSArray<PKShippingMethod *>* shippingMethods, NSArray<PKPaymentSummaryItem*> *summaryItems) {
-        if (status == STPShippingStatusInvalid) {
-            completion(PKPaymentAuthorizationStatusInvalidShippingPostalAddress, shippingMethods, summaryItems);
-        }
-        else {
-            completion(PKPaymentAuthorizationStatusSuccess, shippingMethods, summaryItems);
-        }
-    });
-}
-#pragma clang diagnostic pop
-
 - (void)paymentAuthorizationViewControllerDidFinish:(__unused PKPaymentAuthorizationViewController *)controller {
+    [self _finish];
+}
+
+- (void)_finish {
     if (self.didSucceed) {
         self.onFinish(STPPaymentStatusSuccess, nil);
     }
@@ -118,14 +116,14 @@ typedef void (^STPPaymentAuthorizationStatusCallback)(PKPaymentAuthorizationStat
                       onShippingAddressSelection:(STPShippingAddressSelectionBlock)onShippingAddressSelection
                        onShippingMethodSelection:(STPShippingMethodSelectionBlock)onShippingMethodSelection
                           onPaymentAuthorization:(STPPaymentAuthorizationBlock)onPaymentAuthorization
-                                 onTokenCreation:(STPApplePayTokenHandlerBlock)onTokenCreation
+                         onPaymentMethodCreation:(STPApplePayPaymentMethodHandlerBlock)onPaymentMethodCreation
                                         onFinish:(STPPaymentCompletionBlock)onFinish {
     STPBlockBasedApplePayDelegate *delegate = [STPBlockBasedApplePayDelegate new];
     delegate.apiClient = apiClient;
     delegate.onShippingAddressSelection = onShippingAddressSelection;
     delegate.onShippingMethodSelection = onShippingMethodSelection;
     delegate.onPaymentAuthorization = onPaymentAuthorization;
-    delegate.onTokenCreation = onTokenCreation;
+    delegate.onPaymentMethodCreation = onPaymentMethodCreation;
     delegate.onFinish = onFinish;
     PKPaymentAuthorizationViewController *viewController = [[self alloc] initWithPaymentRequest:paymentRequest];
     viewController.delegate = delegate;

@@ -49,10 +49,13 @@
 
 - (instancetype)initWithPaymentContext:(STPPaymentContext *)paymentContext {
     STPAddress *billingAddress = nil;
-    id<STPPaymentMethod> paymentMethod = paymentContext.selectedPaymentMethod;
-    if ([paymentMethod isKindOfClass:[STPCard class]]) {
-        STPCard *card = (STPCard *)paymentMethod;
+    id<STPPaymentOption> paymentOption = paymentContext.selectedPaymentOption;
+    if ([paymentOption isKindOfClass:[STPCard class]]) {
+        STPCard *card = (STPCard *)paymentOption;
         billingAddress = [card address];
+    } else if ([paymentOption isKindOfClass:[STPPaymentMethod class]]) {
+        STPPaymentMethod *paymentMethod = (STPPaymentMethod *)paymentOption;
+        billingAddress = [[STPAddress alloc] initWithPaymentMethodBillingDetails:paymentMethod.billingDetails];
     }
     STPUserInformation *prefilledInformation;
     if (paymentContext.prefilledInformation != nil) {
@@ -117,7 +120,8 @@
     self.nextItem = nextItem;
     self.stp_navigationItemProxy.rightBarButtonItem = nextItem;
     self.stp_navigationItemProxy.rightBarButtonItem.enabled = NO;
-
+    self.stp_navigationItemProxy.rightBarButtonItem.accessibilityIdentifier = @"ShippingViewControllerNextButtonIdentifier";
+    
     UIImageView *imageView = [[UIImageView alloc] initWithImage:[STPImageLibrary largeShippingImage]];
     imageView.contentMode = UIViewContentModeCenter;
     imageView.frame = CGRectMake(0, 0, self.view.bounds.size.width, imageView.bounds.size.height + (57 * 2));
@@ -137,8 +141,12 @@
                        forState:UIControlStateNormal];
     [headerView.button addTarget:self action:@selector(useBillingAddress:)
                 forControlEvents:UIControlEventTouchUpInside];
-    BOOL needsAddress = self.configuration.requiredShippingAddressFields & PKAddressFieldPostalAddress && !self.addressViewModel.isValid;
-    BOOL buttonVisible = (needsAddress && self.billingAddress != nil && !self.hasUsedBillingAddress);
+    headerView.button.accessibilityIdentifier = @"ShippingAddressViewControllerUseBillingButton";
+    NSSet<STPContactField> *requiredFields = self.configuration.requiredShippingAddressFields;
+    BOOL needsAddress = [requiredFields containsObject:STPContactFieldPostalAddress] && !self.addressViewModel.isValid;
+    BOOL buttonVisible = (needsAddress
+                          && [self.billingAddress containsContentForShippingAddressFields:requiredFields]
+                          && !self.hasUsedBillingAddress);
     headerView.button.alpha = buttonVisible ? 1 : 0;
     [headerView setNeedsLayout];
     _addressHeaderView = headerView;
@@ -310,8 +318,8 @@
 - (UITableViewCell *)tableView:(__unused UITableView *)tableView
          cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [self.addressViewModel.addressCells stp_boundSafeObjectAtIndex:indexPath.row];
-    cell.backgroundColor = [UIColor clearColor];
-    cell.contentView.backgroundColor = self.theme.secondaryBackgroundColor;
+    cell.backgroundColor = self.theme.secondaryBackgroundColor;
+    cell.contentView.backgroundColor = [UIColor clearColor];
     return cell;
 }
 
@@ -354,7 +362,7 @@
 }
 
 - (NSString *)titleForShippingType:(STPShippingType)type {
-    if (self.configuration.requiredShippingAddressFields & PKAddressFieldPostalAddress) {
+    if ([self.configuration.requiredShippingAddressFields containsObject:STPContactFieldPostalAddress]) {
         switch (type) {
             case STPShippingTypeShipping:
                 return STPLocalizedString(@"Shipping", @"Title for shipping info form");
@@ -370,7 +378,7 @@
 }
 
 - (NSString *)headerTitleForShippingType:(STPShippingType)type {
-     if (self.configuration.requiredShippingAddressFields & PKAddressFieldPostalAddress) {
+     if ([self.configuration.requiredShippingAddressFields containsObject:STPContactFieldPostalAddress]) {
         switch (type) {
             case STPShippingTypeShipping:
                 return STPLocalizedString(@"Shipping Address", @"Title for shipping address entry section");

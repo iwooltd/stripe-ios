@@ -14,14 +14,32 @@ NSString *const STPTestJSONCustomer = @"Customer";
 
 NSString *const STPTestJSONCard = @"Card";
 
-NSString *const STPTestJSONSourceAlipay = @"AlipaySource";
-NSString *const STPTestJSONSourceBitcoin = @"BitcoinSource";
-NSString *const STPTestJSONSourceCard = @"CardSource";
+NSString *const STPTestJSONPaymentIntent = @"PaymentIntent";
+NSString *const STPTestJSONSetupIntent = @"SetupIntent";
+NSString *const STPTestJSONPaymentMethod = @"PaymentMethod";
+NSString *const STPTestJSONApplePayPaymentMethod = @"ApplePayPaymentMethod";
+
 NSString *const STPTestJSONSource3DS = @"3DSSource";
+NSString *const STPTestJSONSourceAlipay = @"AlipaySource";
+NSString *const STPTestJSONSourceBancontact = @"BancontactSource";
+NSString *const STPTestJSONSourceCard = @"CardSource";
+NSString *const STPTestJSONSourceEPS = @"EPSSource";
+NSString *const STPTestJSONSourceGiropay = @"GiropaySource";
 NSString *const STPTestJSONSourceiDEAL = @"iDEALSource";
+NSString *const STPTestJSONSourceMultibanco = @"MultibancoSource";
+NSString *const STPTestJSONSourceP24 = @"P24Source";
 NSString *const STPTestJSONSourceSEPADebit = @"SEPADebitSource";
+NSString *const STPTestJSONSourceSOFORT = @"SOFORTSource";
+NSString *const STPTestJSONSourceWeChatPay = @"WeChatPaySource";
+
 
 @implementation STPFixtures
+
++ (STPConnectAccountParams *)accountParams {
+    STPConnectAccountIndividualParams *params = [STPConnectAccountIndividualParams new];
+    return [[STPConnectAccountParams alloc] initWithTosShownAndAccepted:YES
+                                                             individual:params];
+}
 
 + (STPAddress *)address {
     STPAddress *address = [STPAddress new];
@@ -57,6 +75,15 @@ NSString *const STPTestJSONSourceSEPADebit = @"SEPADebitSource";
     return cardParams;
 }
 
++ (STPPaymentMethodCardParams *)paymentMethodCardParams {
+    STPPaymentMethodCardParams *cardParams = [STPPaymentMethodCardParams new];
+    cardParams.number = @"4242424242424242";
+    cardParams.expMonth = @(10);
+    cardParams.expYear = @(99);
+    cardParams.cvc = @"123";
+    return cardParams;
+}
+
 + (STPCard *)card {
     return [STPCard decodedObjectFromAPIResponse:[STPTestUtils jsonNamed:STPTestJSONCard]];
 }
@@ -72,6 +99,7 @@ NSString *const STPTestJSONSourceSEPADebit = @"SEPADebitSource";
                                 @"object": @"token",
                                 @"livemode": @NO,
                                 @"created": @1353025450.0,
+                                @"type": @"card",
                                 @"used": @NO,
                                 @"card": cardDict
                                 };
@@ -125,6 +153,25 @@ NSString *const STPTestJSONSourceSEPADebit = @"SEPADebitSource";
 
 }
 
++ (STPCustomer *)customerWithCardAndApplePaySources {
+    NSMutableDictionary *card1 = [[STPTestUtils jsonNamed:STPTestJSONSourceCard] mutableCopy];
+    card1[@"id"] = @"src_apple_pay_123";
+    NSMutableDictionary *cardDict = [card1[@"card"] mutableCopy];
+    cardDict[@"tokenization_method"] = @"apple_pay";
+    card1[@"card"] = cardDict;
+
+    NSMutableDictionary *card2 = [[STPTestUtils jsonNamed:STPTestJSONSourceCard] mutableCopy];
+    card2[@"id"] = @"src_card_456";
+
+    NSMutableDictionary *customer = [[STPTestUtils jsonNamed:STPTestJSONCustomer] mutableCopy];
+    NSMutableDictionary *sources = [customer[@"sources"] mutableCopy];
+    sources[@"data"] = @[card1, card2];
+    customer[@"default_source"] = card1[@"id"];
+    customer[@"sources"] = sources;
+
+    return [STPCustomer decodedObjectFromAPIResponse:customer];
+}
+
 + (STPCustomer *)customerWithSourcesFromJSONKeys:(NSArray<NSString *> *)jsonSourceKeys
                                    defaultSource:(NSString *)jsonKeyForDefaultSource {
     NSMutableArray *sourceJSONDicts = [NSMutableArray new];
@@ -157,12 +204,24 @@ NSString *const STPTestJSONSourceSEPADebit = @"SEPADebitSource";
     return [STPSource decodedObjectFromAPIResponse:[STPTestUtils jsonNamed:STPTestJSONSourceAlipay]];
 }
 
-+ (STPSource *)alipaySourceWithNativeUrl {
++ (STPSource *)alipaySourceWithNativeURL {
     NSMutableDictionary *dictionary = [STPTestUtils jsonNamed:STPTestJSONSourceAlipay].mutableCopy;
     NSMutableDictionary *detailsDictionary = ((NSDictionary *)dictionary[@"alipay"]).mutableCopy;
     detailsDictionary[@"native_url"] = @"alipay://test";
     dictionary[@"alipay"] = detailsDictionary;
     return [STPSource decodedObjectFromAPIResponse:dictionary];
+}
+
++ (STPSource *)weChatPaySource {
+    return [STPSource decodedObjectFromAPIResponse:[STPTestUtils jsonNamed:STPTestJSONSourceWeChatPay]];
+}
+
++ (STPPaymentIntent *)paymentIntent {
+    return [STPPaymentIntent decodedObjectFromAPIResponse:[STPTestUtils jsonNamed:@"PaymentIntent"]];
+}
+
++ (STPSetupIntent *)setupIntent {
+    return [STPSetupIntent decodedObjectFromAPIResponse:[STPTestUtils jsonNamed:@"SetupIntent"]];
 }
 
 + (STPPaymentConfiguration *)paymentConfiguration {
@@ -227,6 +286,16 @@ NSString *const STPTestJSONSourceSEPADebit = @"SEPADebitSource";
     [payment performSelector:@selector(setToken:) withObject:paymentToken];
 #pragma clang diagnostic pop
     return payment;
+}
+
+#pragma mark - Payment Method
+
++ (STPPaymentMethod *)paymentMethod {
+    return [STPPaymentMethod decodedObjectFromAPIResponse:[STPTestUtils jsonNamed:STPTestJSONPaymentMethod]];
+}
+
++ (STPPaymentMethod *)applePayPaymentMethod {
+    return [STPPaymentMethod decodedObjectFromAPIResponse:[STPTestUtils jsonNamed:STPTestJSONApplePayPaymentMethod]];
 }
 
 @end

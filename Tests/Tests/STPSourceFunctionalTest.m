@@ -9,14 +9,23 @@
 @import XCTest;
 
 #import "Stripe.h"
+#import "STPNetworkStubbingTestCase.h"
 
 static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
 
-@interface STPSourceFunctionalTest : XCTestCase
+@interface STPSourceFunctionalTest : STPNetworkStubbingTestCase
+@end
 
+@interface STPAPIClient (WritableURL)
+@property (nonatomic, readwrite) NSURL *apiURL;
 @end
 
 @implementation STPSourceFunctionalTest
+
+- (void)setUp {
+    // self.recordingMode = @YES;
+    [super setUp];
+}
 
 - (void)testCreateSource_bancontact {
     STPSourceParams *params = [STPSourceParams bancontactParamsWithAmount:1099
@@ -35,36 +44,9 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
         XCTAssertEqualObjects(source.currency, params.currency);
         XCTAssertEqualObjects(source.owner.name, params.owner[@"name"]);
         XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
-        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC"]);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
         XCTAssertNotNil(source.redirect.url);
         XCTAssertEqualObjects(source.metadata, params.metadata);
-
-        [expectation fulfill];
-    }];
-    [self waitForExpectationsWithTimeout:5.0f handler:nil];
-}
-
-- (void)testCreateSource_bitcoin {
-    STPSourceParams *params = [STPSourceParams bitcoinParamsWithAmount:1000
-                                                              currency:@"usd"
-                                                                 email:@"user@example.com"];
-    params.metadata = @{@"foo": @"bar"};
-
-    STPAPIClient *client = [[STPAPIClient alloc] initWithPublishableKey:apiKey];
-    XCTestExpectation *expectation = [self expectationWithDescription:@"Source creation"];
-    [client createSourceWithParams:params completion:^(STPSource *source, NSError * error) {
-        XCTAssertNil(error);
-        XCTAssertNotNil(source);
-        XCTAssertEqual(source.type, STPSourceTypeBitcoin);
-        XCTAssertEqualObjects(source.amount, params.amount);
-        XCTAssertEqualObjects(source.currency, params.currency);
-        XCTAssertEqualObjects(source.owner.email, params.owner[@"email"]);
-        XCTAssertEqualObjects(source.metadata, params.metadata);
-        XCTAssertNotNil(source.receiver);
-        XCTAssertNotNil(source.receiver.address);
-        XCTAssertNotNil(source.receiver.amountCharged);
-        XCTAssertNotNil(source.receiver.amountReceived);
-        XCTAssertNotNil(source.receiver.amountReturned);
 
         [expectation fulfill];
     }];
@@ -75,7 +57,7 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
     STPCardParams *card = [[STPCardParams alloc] init];
     card.number = @"4242 4242 4242 4242";
     card.expMonth = 6;
-    card.expYear = 2018;
+    card.expYear = 2024;
     card.currency = @"usd";
     card.name = @"Jenny Rosen";
     card.address.line1 = @"123 Fake Street";
@@ -128,7 +110,7 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
         XCTAssertEqualObjects(source.currency, params.currency);
         XCTAssertEqualObjects(source.owner.name, params.owner[@"name"]);
         XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
-        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC"]);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
         XCTAssertNotNil(source.redirect.url);
         XCTAssertEqualObjects(source.metadata, params.metadata);
 
@@ -155,10 +137,67 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
         XCTAssertEqualObjects(source.currency, params.currency);
         XCTAssertEqualObjects(source.owner.name, params.owner[@"name"]);
         XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
-        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC"]);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
         XCTAssertNotNil(source.redirect.url);
         XCTAssertEqualObjects(source.details[@"bank"], @"ing");
+        XCTAssertEqualObjects(source.details[@"statement_descriptor"], @"ORDER AT123");
         XCTAssertEqualObjects(source.metadata, params.metadata);
+
+        [expectation fulfill];
+    }];
+    [self waitForExpectationsWithTimeout:5.0f handler:nil];
+}
+
+- (void)testCreateSource_ideal_missingOptionalFields {
+    STPSourceParams *params = [STPSourceParams idealParamsWithAmount:1099
+                                                                name:nil
+                                                           returnURL:@"https://shop.example.com/crtABC"
+                                                 statementDescriptor:nil
+                                                                bank:nil];
+
+    STPAPIClient *client = [[STPAPIClient alloc] initWithPublishableKey:apiKey];
+    XCTestExpectation *expectation = [self expectationWithDescription:@"Source creation"];
+    [client createSourceWithParams:params completion:^(STPSource *source, NSError * error) {
+        XCTAssertNil(error);
+        XCTAssertNotNil(source);
+        XCTAssertEqual(source.type, STPSourceTypeIDEAL);
+        XCTAssertEqualObjects(source.amount, params.amount);
+        XCTAssertEqualObjects(source.currency, params.currency);
+        XCTAssertNil(source.owner.name);
+        XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
+        XCTAssertNotNil(source.redirect.url);
+        XCTAssertNil(source.details[@"bank"]);
+        XCTAssertNil(source.details[@"statement_descriptor"]);
+        XCTAssertEqualObjects(source.metadata, @{});
+
+        [expectation fulfill];
+    }];
+    [self waitForExpectationsWithTimeout:5.0f handler:nil];
+}
+
+- (void)testCreateSource_ideal_emptyOptionalFields {
+    STPSourceParams *params = [STPSourceParams idealParamsWithAmount:1099
+                                                                name:@""
+                                                           returnURL:@"https://shop.example.com/crtABC"
+                                                 statementDescriptor:@""
+                                                                bank:@""];
+
+    STPAPIClient *client = [[STPAPIClient alloc] initWithPublishableKey:apiKey];
+    XCTestExpectation *expectation = [self expectationWithDescription:@"Source creation"];
+    [client createSourceWithParams:params completion:^(STPSource *source, NSError * error) {
+        XCTAssertNil(error);
+        XCTAssertNotNil(source);
+        XCTAssertEqual(source.type, STPSourceTypeIDEAL);
+        XCTAssertEqualObjects(source.amount, params.amount);
+        XCTAssertEqualObjects(source.currency, params.currency);
+        XCTAssertNil(source.owner.name);
+        XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
+        XCTAssertNotNil(source.redirect.url);
+        XCTAssertNil(source.details[@"bank"]);
+        XCTAssertNil(source.details[@"statement_descriptor"]);
+        XCTAssertEqualObjects(source.metadata, @{});
 
         [expectation fulfill];
     }];
@@ -241,7 +280,7 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
         XCTAssertEqualObjects(source.amount, params.amount);
         XCTAssertEqualObjects(source.currency, params.currency);
         XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
-        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC"]);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
         XCTAssertNotNil(source.redirect.url);
         XCTAssertEqualObjects(source.metadata, params.metadata);
         XCTAssertEqualObjects(source.details[@"country"], @"DE");
@@ -255,7 +294,7 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
     STPCardParams *card = [[STPCardParams alloc] init];
     card.number = @"4000000000003063";
     card.expMonth = 6;
-    card.expYear = 2018;
+    card.expYear = 2024;
     card.currency = @"usd";
     card.address.line1 = @"123 Fake Street";
     card.address.line2 = @"Apartment 4";
@@ -273,6 +312,13 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
         XCTAssertNotNil(source1);
         XCTAssertEqual(source1.cardDetails.threeDSecure, STPSourceCard3DSecureStatusRequired);
         [cardExp fulfill];
+
+        if (source1.stripeID == nil) {
+            XCTFail(@"stripeID of the Card Source is required to create a 3DS source");
+            [threeDSExp fulfill];
+            return;
+        }
+
         STPSourceParams *params = [STPSourceParams threeDSecureParamsWithAmount:1099
                                                                        currency:@"eur"
                                                                       returnURL:@"https://shop.example.com/crtABC"
@@ -285,7 +331,7 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
             XCTAssertEqualObjects(source2.amount, params.amount);
             XCTAssertEqualObjects(source2.currency, params.currency);
             XCTAssertEqual(source2.redirect.status, STPSourceRedirectStatusPending);
-            XCTAssertEqualObjects(source2.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC"]);
+            XCTAssertEqualObjects(source2.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
             XCTAssertNotNil(source2.redirect.url);
             XCTAssertEqualObjects(source2.metadata, params.metadata);
             [threeDSExp fulfill];
@@ -293,6 +339,58 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
     }];
 
     [self waitForExpectationsWithTimeout:5.0f handler:nil];
+}
+
+- (void)skip_testCreateSourceVisaCheckout {
+    // The SDK does not have a means of generating Visa Checkout params for testing. Supply your own
+    // callId, and the correct publishable key, and you can run this test case
+    // manually after removing the `skip_` prefix. It'll log the source's stripeID, and that
+    // can be verified in dashboard.
+    STPSourceParams *params = [STPSourceParams visaCheckoutParamsWithCallId:@""];
+    STPAPIClient *client = [[STPAPIClient alloc] initWithPublishableKey:@"pk_"];
+    client.apiURL = [NSURL URLWithString:@"https://api.stripe.com/v1"];
+
+    XCTestExpectation *sourceExp = [self expectationWithDescription:@"VCO source created"];
+    [client createSourceWithParams:params completion:^(STPSource * _Nullable source, NSError * _Nullable error) {
+        [sourceExp fulfill];
+
+        XCTAssertNil(error);
+        XCTAssertNotNil(source);
+        XCTAssertEqual(source.type, STPSourceTypeCard);
+        XCTAssertEqual(source.flow, STPSourceFlowNone);
+        XCTAssertEqual(source.status, STPSourceStatusChargeable);
+        XCTAssertEqual(source.usage, STPSourceUsageReusable);
+        XCTAssertTrue([source.stripeID hasPrefix:@"src_"]);
+        NSLog(@"Created a VCO source %@", source.stripeID);
+    }];
+
+    [self waitForExpectationsWithTimeout:10.0 handler:nil];
+}
+
+- (void)skip_testCreateSourceMasterpass {
+    // The SDK does not have a means of generating Masterpass params for testing. Supply your own
+    // cartId & transactionId, and the correct publishable key, and you can run this test case
+    // manually after removing the `skip_` prefix. It'll log the source's stripeID, and that
+    // can be verified in dashboard.
+    STPSourceParams *params = [STPSourceParams masterpassParamsWithCartId:@"" transactionId:@""];
+    STPAPIClient *client = [[STPAPIClient alloc] initWithPublishableKey:@"pk_"];
+    client.apiURL = [NSURL URLWithString:@"https://api.stripe.com/v1"];
+
+    XCTestExpectation *sourceExp = [self expectationWithDescription:@"Masterpass source created"];
+    [client createSourceWithParams:params completion:^(STPSource * _Nullable source, NSError * _Nullable error) {
+        [sourceExp fulfill];
+
+        XCTAssertNil(error);
+        XCTAssertNotNil(source);
+        XCTAssertEqual(source.type, STPSourceTypeCard);
+        XCTAssertEqual(source.flow, STPSourceFlowNone);
+        XCTAssertEqual(source.status, STPSourceStatusChargeable);
+        XCTAssertEqual(source.usage, STPSourceUsageSingleUse);
+        XCTAssertTrue([source.stripeID hasPrefix:@"src_"]);
+        NSLog(@"Created a Masterpass source %@", source.stripeID);
+    }];
+
+    [self waitForExpectationsWithTimeout:10.0 handler:nil];
 }
 
 - (void)testCreateSource_alipay {
@@ -311,7 +409,7 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
         XCTAssertEqualObjects(source.amount, params.amount);
         XCTAssertEqualObjects(source.currency, params.currency);
         XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
-        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC"]);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
         XCTAssertNotNil(source.redirect.url);
         XCTAssertEqualObjects(source.metadata, params.metadata);
         [expectation fulfill];
@@ -340,7 +438,7 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
         XCTAssertEqualObjects(source.owner.email, params.owner[@"email"]);
         XCTAssertEqualObjects(source.owner.name, params.owner[@"name"]);
         XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
-        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC"]);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
         XCTAssertNotNil(source.redirect.url);
         XCTAssertEqualObjects(source.metadata, params.metadata);
         [expectation fulfill];
@@ -372,6 +470,108 @@ static NSString *const apiKey = @"pk_test_vOo1umqsYxSrP5UXfOeL3ecm";
                               XCTAssertEqualObjects(source1, source2);
                               [retrieveExp fulfill];
                           }];
+    }];
+    [self waitForExpectationsWithTimeout:5.0f handler:nil];
+}
+
+- (void)testCreateSource_eps {
+    STPSourceParams *params = [STPSourceParams epsParamsWithAmount:1099
+                                                              name:@"Jenny Rosen"
+                                                         returnURL:@"https://shop.example.com/crtABC"
+                                               statementDescriptor:@"ORDER AT123"];
+    params.metadata = @{@"foo": @"bar"};
+
+    STPAPIClient *client = [[STPAPIClient alloc] initWithPublishableKey:apiKey];
+    XCTestExpectation *expectation = [self expectationWithDescription:@"Source creation"];
+    [client createSourceWithParams:params completion:^(STPSource *source, NSError * error) {
+        XCTAssertNil(error);
+        XCTAssertNotNil(source);
+        XCTAssertEqual(source.type, STPSourceTypeEPS);
+        XCTAssertEqualObjects(source.amount, params.amount);
+        XCTAssertEqualObjects(source.currency, params.currency);
+        XCTAssertEqualObjects(source.owner.name, params.owner[@"name"]);
+        XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
+        XCTAssertNotNil(source.redirect.url);
+        XCTAssertEqualObjects(source.metadata, params.metadata);
+        XCTAssertEqualObjects(source.allResponseFields[@"statement_descriptor"], @"ORDER AT123");
+
+        [expectation fulfill];
+    }];
+    [self waitForExpectationsWithTimeout:5.0f handler:nil];
+}
+
+- (void)testCreateSource_eps_no_statement_descriptor {
+    STPSourceParams *params = [STPSourceParams epsParamsWithAmount:1099
+                                                              name:@"Jenny Rosen"
+                                                         returnURL:@"https://shop.example.com/crtABC"
+                                               statementDescriptor:nil];
+    params.metadata = @{@"foo": @"bar"};
+
+    STPAPIClient *client = [[STPAPIClient alloc] initWithPublishableKey:apiKey];
+    XCTestExpectation *expectation = [self expectationWithDescription:@"Source creation"];
+    [client createSourceWithParams:params completion:^(STPSource *source, NSError * error) {
+        XCTAssertNil(error);
+        XCTAssertNotNil(source);
+        XCTAssertEqual(source.type, STPSourceTypeEPS);
+        XCTAssertEqualObjects(source.amount, params.amount);
+        XCTAssertEqualObjects(source.currency, params.currency);
+        XCTAssertEqualObjects(source.owner.name, params.owner[@"name"]);
+        XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
+        XCTAssertNotNil(source.redirect.url);
+        XCTAssertEqualObjects(source.metadata, params.metadata);
+        XCTAssertNil(source.allResponseFields[@"statement_descriptor"]);
+
+        [expectation fulfill];
+    }];
+    [self waitForExpectationsWithTimeout:5.0f handler:nil];
+}
+
+- (void)testCreateSource_multibanco {
+    STPSourceParams *params = [STPSourceParams multibancoParamsWithAmount:1099
+                                                                returnURL:@"https://shop.example.com/crtABC"
+                                                                    email:@"user@example.com"];
+    params.metadata = @{@"foo": @"bar"};
+
+    STPAPIClient *client = [[STPAPIClient alloc] initWithPublishableKey:apiKey];
+    XCTestExpectation *expectation = [self expectationWithDescription:@"Source creation"];
+    [client createSourceWithParams:params completion:^(STPSource *source, NSError * error) {
+        XCTAssertNil(error);
+        XCTAssertNotNil(source);
+        XCTAssertEqual(source.type, STPSourceTypeMultibanco);
+        XCTAssertEqualObjects(source.amount, params.amount);
+        XCTAssertEqual(source.redirect.status, STPSourceRedirectStatusPending);
+        XCTAssertEqualObjects(source.redirect.returnURL, [NSURL URLWithString:@"https://shop.example.com/crtABC?redirect_merchant_name=xctest"]);
+        XCTAssertNotNil(source.redirect.url);
+        XCTAssertEqualObjects(source.metadata, params.metadata);
+
+        [expectation fulfill];
+    }];
+    [self waitForExpectationsWithTimeout:5.0f handler:nil];
+}
+
+- (void)testCreateSource_wechatPay {
+    STPSourceParams *params = [STPSourceParams wechatPayParamsWithAmount:1010
+                                                                currency:@"usd"
+                                                                   appId:@"wxa0df51ec63e578ce"
+                                                     statementDescriptor:nil];
+
+    STPAPIClient *client = [[STPAPIClient alloc] initWithPublishableKey:@"pk_live_L4KL0pF017Jgv9hBaWzk4xoB"];
+    XCTestExpectation *expectation = [self expectationWithDescription:@"Source creation"];
+    [client createSourceWithParams:params completion:^(STPSource *source, NSError * error) {
+        XCTAssertNil(error);
+        XCTAssertNotNil(source);
+        XCTAssertEqual(source.type, STPSourceTypeWeChatPay);
+        XCTAssertEqual(source.status, STPSourceStatusPending);
+        XCTAssertEqualObjects(source.amount, params.amount);
+        XCTAssertNil(source.redirect);
+
+        STPSourceWeChatPayDetails *wechat = source.weChatPayDetails;
+        XCTAssertNotNil(wechat);
+        XCTAssertNotNil(wechat.weChatAppURL);
+
+        [expectation fulfill];
     }];
     [self waitForExpectationsWithTimeout:5.0f handler:nil];
 }

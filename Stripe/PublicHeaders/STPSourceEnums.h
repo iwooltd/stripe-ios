@@ -12,6 +12,8 @@
 typedef NS_ENUM(NSInteger, STPSourceFlow) {
     /**
      No action is required from your customer.
+     
+     @note WeChat Pay Sources also have this flow type.
      */
     STPSourceFlowNone,
 
@@ -107,11 +109,6 @@ typedef NS_ENUM(NSInteger, STPSourceType) {
     STPSourceTypeBancontact,
 
     /**
-     A Bitcoin source. @see https://stripe.com/docs/sources/bitcoin
-     */
-    STPSourceTypeBitcoin,
-
-    /**
      A card source. @see https://stripe.com/docs/sources/cards
      */
     STPSourceTypeCard,
@@ -150,6 +147,21 @@ typedef NS_ENUM(NSInteger, STPSourceType) {
      A P24 source. @see https://stripe.com/docs/sources/p24
      */
     STPSourceTypeP24,
+
+    /**
+     An EPS source. @see https://stripe.com/docs/sources/eps
+     */
+    STPSourceTypeEPS,
+
+    /**
+     A Multibanco source. @see https://stripe.com/docs/sources/multibanco
+     */
+    STPSourceTypeMultibanco,
+
+    /**
+     A WeChat Pay source. @see https://stripe.com/docs/sources/wechat-pay
+     */
+    STPSourceTypeWeChatPay,
 
     /**
      An unknown type of source.

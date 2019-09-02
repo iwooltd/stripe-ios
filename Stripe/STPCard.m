@@ -41,6 +41,7 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - STPCardBrand
 
 + (STPCardBrand)brandFromString:(NSString *)string {
+    // Documentation: https://stripe.com/docs/api#card_object-brand
     NSString *brand = [string lowercaseString];
     if ([brand isEqualToString:@"visa"]) {
         return STPCardBrandVisa;
@@ -54,28 +55,15 @@ NS_ASSUME_NONNULL_BEGIN
         return STPCardBrandJCB;
     } else if ([brand isEqualToString:@"diners club"]) {
         return STPCardBrandDinersClub;
+    } else if ([brand isEqualToString:@"unionpay"]) {
+        return STPCardBrandUnionPay;
     } else {
         return STPCardBrandUnknown;
     }
 }
 
 + (NSString *)stringFromBrand:(STPCardBrand)brand {
-    switch (brand) {
-        case STPCardBrandAmex:
-            return @"American Express";
-        case STPCardBrandDinersClub:
-            return @"Diners Club";
-        case STPCardBrandDiscover:
-            return @"Discover";
-        case STPCardBrandJCB:
-            return @"JCB";
-        case STPCardBrandMasterCard:
-            return @"MasterCard";
-        case STPCardBrandVisa:
-            return @"Visa";
-        case STPCardBrandUnknown:
-            return @"Unknown";
-    }
+    return STPStringFromCardBrand(brand);
 }
 
 #pragma mark - STPCardFundingType
@@ -92,7 +80,7 @@ NS_ASSUME_NONNULL_BEGIN
     NSString *key = [string lowercaseString];
     NSNumber *fundingNumber = [self stringToFundingMapping][key];
 
-    if (fundingNumber) {
+    if (fundingNumber != nil) {
         return (STPCardFundingType)[fundingNumber integerValue];
     }
 
@@ -169,50 +157,57 @@ NS_ASSUME_NONNULL_BEGIN
     return @"card";
 }
 
-+ (NSArray *)requiredFields {
-    return @[@"id", @"last4", @"brand", @"exp_month", @"exp_year"];
-}
-
 + (nullable instancetype)decodedObjectFromAPIResponse:(nullable NSDictionary *)response {
-    NSDictionary *dict = [response stp_dictionaryByRemovingNullsValidatingRequiredFields:[self requiredFields]];
+    NSDictionary *dict = [response stp_dictionaryByRemovingNulls];
     if (!dict) {
+        return nil;
+    }
+
+    // required fields
+    NSString *stripeId = [dict stp_stringForKey:@"id"];
+    NSString *last4 = [dict stp_stringForKey:@"last4"];
+    NSString *rawBrand = [dict stp_stringForKey:@"brand"];
+    NSNumber *rawExpMonth = [dict stp_numberForKey:@"exp_month"];
+    NSNumber *rawExpYear = [dict stp_numberForKey:@"exp_year"];
+    if (stripeId == nil || last4 == nil || rawBrand == nil || rawExpMonth == nil || rawExpYear == nil) {
         return nil;
     }
 
     STPCard *card = [self new];
     card.address = [STPAddress new];
 
-    card.stripeID = dict[@"id"];
-    card.name = dict[@"name"];
-    card.last4 = dict[@"last4"];
-    card.dynamicLast4 = dict[@"dynamic_last4"];
-    card.brand = [self.class brandFromString:dict[@"brand"]];
+    card.stripeID = stripeId;
+    card.name = [dict stp_stringForKey:@"name"];
+    card.last4 = last4;
+    card.dynamicLast4 = [dict stp_stringForKey:@"dynamic_last4"];
+    card.brand = [self.class brandFromString:rawBrand];
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated"
     // This is only intended to be deprecated publicly.
     // When removed from public header, can remove these pragmas
-    card.funding = [self.class fundingFromString:dict[@"funding"]];
+    NSString *rawFunding = [dict stp_stringForKey:@"funding"];
+    card.funding = [self.class fundingFromString:rawFunding];
 #pragma clang diagnostic pop
 
-    card.country = dict[@"country"];
-    card.currency = dict[@"currency"];
-    card.expMonth = [dict[@"exp_month"] intValue];
-    card.expYear = [dict[@"exp_year"] intValue];
-    card.metadata = [dict[@"metadata"] stp_dictionaryByRemovingNonStrings];
+    card.country = [dict stp_stringForKey:@"country"];
+    card.currency = [dict stp_stringForKey:@"currency"];
+    card.expMonth = [dict stp_intForKey:@"exp_month" or:0];
+    card.expYear = [dict stp_intForKey:@"exp_year" or:0];
+    card.metadata = [[dict stp_dictionaryForKey:@"metadata"] stp_dictionaryByRemovingNonStrings];
 
     card.address.name = card.name;
-    card.address.line1 = dict[@"address_line1"];
-    card.address.line2 = dict[@"address_line2"];
-    card.address.city = dict[@"address_city"];
-    card.address.state = dict[@"address_state"];
-    card.address.postalCode = dict[@"address_zip"];
-    card.address.country = dict[@"address_country"];
+    card.address.line1 = [dict stp_stringForKey:@"address_line1"];
+    card.address.line2 = [dict stp_stringForKey:@"address_line2"];
+    card.address.city = [dict stp_stringForKey:@"address_city"];
+    card.address.state = [dict stp_stringForKey:@"address_state"];
+    card.address.postalCode = [dict stp_stringForKey:@"address_zip"];
+    card.address.country = [dict stp_stringForKey:@"address_country"];
     
     card.allResponseFields = dict;
     return card;
 }
 
-#pragma mark - STPPaymentMethod
+#pragma mark - STPPaymentOption
 
 - (UIImage *)image {
     return [STPImageLibrary brandImageForCardBrand:self.brand];

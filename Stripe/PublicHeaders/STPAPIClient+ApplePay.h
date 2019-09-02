@@ -10,11 +10,8 @@
 
 #import "STPAPIClient.h"
 
-#define FAUXPAS_IGNORED_IN_FILE(...)
-FAUXPAS_IGNORED_IN_FILE(APIAvailability)
-
 /**
- STPAPIClient extensions to create Stripe tokens from Apple Pay PKPayment objects.
+ STPAPIClient extensions to create Stripe Tokens, Sources, or PaymentMethods from Apple Pay PKPayment objects.
  */
 @interface STPAPIClient (ApplePay)
 
@@ -35,6 +32,15 @@ FAUXPAS_IGNORED_IN_FILE(APIAvailability)
  */
 - (void)createSourceWithPayment:(nonnull PKPayment *)payment
                      completion:(nonnull STPSourceCompletionBlock)completion;
+
+/**
+ Converts a PKPayment object into a Stripe Payment Method using the Stripe API.
+ 
+ @param payment     The user's encrypted payment information as returned from a PKPaymentAuthorizationViewController. Cannot be nil.
+ @param completion  The callback to run with the returned Stripe source (and any errors that may have occurred).
+ */
+- (void)createPaymentMethodWithPayment:(nonnull PKPayment *)payment
+                     completion:(nonnull STPPaymentMethodCompletionBlock)completion;
 
 @end
 

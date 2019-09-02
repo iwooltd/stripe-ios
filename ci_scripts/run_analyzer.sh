@@ -5,7 +5,7 @@ log_file="${TMPDIR}/xcodebuild_analyze.log"
 # Install xcpretty
 if ! command -v xcpretty > /dev/null; then
   echo "Installing xcpretty..."
-  gem install xcpretty --no-ri --no-rdoc
+  gem install xcpretty --no-document
 fi
 
 # Reset log file
@@ -20,6 +20,7 @@ xcodebuild clean analyze \
   -configuration "Debug" \
   -sdk "iphonesimulator" \
   ONLY_ACTIVE_ARCH=NO \
+  OTHER_LDFLAGS="\$(inherited) -Wl,-no_compact_unwind" \
   | tee "${log_file}" \
   | xcpretty
 
@@ -32,7 +33,11 @@ fi
 
 # Search for warnings in log file
 echo "Searching for static analyzer warnings..."
-grep "warning:" "${log_file}" > "/dev/null"
+
+# Fun note:
+# xcodebuild outputs a line like "...SomeFile.m:36:1: warning: foo"
+# ...but sometimes, it inserts spurious newlines everywhere
+grep "warning" "${log_file}" > "/dev/null"
 
 if [[ "$?" != 1 ]]; then
   echo "ERROR: Found static analyzer warnings!"
